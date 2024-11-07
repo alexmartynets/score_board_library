@@ -18,6 +18,7 @@ public class ScoreBoardService {
     }
 
     public void startMatch(String homeTeam, String awayTeam) {
+        validateTeamNames(homeTeam, awayTeam);
         if (isMatchExist(homeTeam, awayTeam)) {
             throw new MatchPresentException("Match already exists");
         }
@@ -26,6 +27,8 @@ public class ScoreBoardService {
     }
 
     public void updateScore(String homeTeam, String awayTeam, int homeScore, int awayScore) {
+        validateTeamNames(homeTeam, awayTeam);
+        validateScore(homeScore, awayScore);
         getMatchByTeams(homeTeam, awayTeam).ifPresentOrElse(match -> {
             match.setHomeScore(homeScore);
             match.setAwayScore(awayScore);
@@ -35,7 +38,9 @@ public class ScoreBoardService {
     }
 
     public void finishMatch(String homeTeam, String awayTeam) {
-        getMatchByTeams(homeTeam, awayTeam).ifPresent(tempStoreForMatches::remove);
+        validateTeamNames(homeTeam, awayTeam);
+        getMatchByTeams(homeTeam, awayTeam).ifPresentOrElse(tempStoreForMatches::remove,
+                () -> { throw new MatchNotFoundException("Match not found"); });
     }
 
     public List<Match> getSummary() {
@@ -46,6 +51,7 @@ public class ScoreBoardService {
     }
 
     public boolean isMatchExist(String homeTeam, String awayTeam) {
+        validateTeamNames(homeTeam, awayTeam);
         return getMatchByTeams(homeTeam, awayTeam).isPresent();
     }
 
@@ -53,5 +59,18 @@ public class ScoreBoardService {
         return tempStoreForMatches.stream()
                 .filter(match -> match.getHomeTeam().equals(homeTeam) && match.getAwayTeam().equals(awayTeam))
                 .findFirst();
+    }
+
+    private void validateTeamNames(String homeTeam, String awayTeam) {
+        if (homeTeam == null || homeTeam.isEmpty() ||
+                awayTeam == null || awayTeam.isEmpty()) {
+            throw new IllegalArgumentException("Team names must not be empty or null");
+        }
+    }
+
+    private void validateScore(int homeScore, int awayScore) {
+        if (homeScore < 0 || awayScore < 0) {
+            throw new IllegalArgumentException("Score cannot be negative");
+        }
     }
 }
