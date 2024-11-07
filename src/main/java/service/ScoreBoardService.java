@@ -38,6 +38,11 @@ public class ScoreBoardService {
     }
 
     public void finishMatch(String homeTeam, String awayTeam) {
+        //TODO Here we can add logic to save data to the database,
+        // send it to the Kafka topic or Redis,
+        // if there is a need to access the data after removal
+        // from the list
+
         validateTeamNames(homeTeam, awayTeam);
         getMatchByTeams(homeTeam, awayTeam).ifPresentOrElse(tempStoreForMatches::remove,
                 () -> { throw new MatchNotFoundException("Match not found"); });
