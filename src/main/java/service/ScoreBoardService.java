@@ -18,7 +18,10 @@ public class ScoreBoardService {
     }
 
     public void startMatch(String homeTeam, String awayTeam) {
-        if (isMatchExist(homeTeam, awayTeam)) throw new MatchPresentException("Match already exists");
+        if (isMatchExist(homeTeam, awayTeam)) {
+            throw new MatchPresentException("Match already exists");
+        }
+
         tempStoreForMatches.add(new Match(homeTeam, awayTeam));
     }
 
