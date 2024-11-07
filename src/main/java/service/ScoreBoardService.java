@@ -4,50 +4,81 @@ import exception.MatchNotFoundException;
 import exception.MatchPresentException;
 import model.Match;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 public class ScoreBoardService {
+
     private final List<Match> tempStoreForMatches;
+    private final Lock lock = new ReentrantLock();
 
     public ScoreBoardService() {
-        this.tempStoreForMatches = new ArrayList<>();
+        this.tempStoreForMatches = new CopyOnWriteArrayList<>();
     }
 
     public void startMatch(String homeTeam, String awayTeam) {
         validateTeamNames(homeTeam, awayTeam);
-        if (isMatchExist(homeTeam, awayTeam)) {
-            throw new MatchPresentException("Match already exists");
+        lock.lock();
+        try {
+            if (isMatchExist(homeTeam, awayTeam)) {
+                throw new MatchPresentException("Match already exists");
+            }
+            tempStoreForMatches.add(new Match(homeTeam, awayTeam));
+        } finally {
+            lock.unlock();
         }
-
-        tempStoreForMatches.add(new Match(homeTeam, awayTeam));
     }
 
     public void updateScore(String homeTeam, String awayTeam, int homeScore, int awayScore) {
         validateTeamNames(homeTeam, awayTeam);
         validateScore(homeScore, awayScore);
-        getMatchByTeams(homeTeam, awayTeam).ifPresentOrElse(match -> {
-            match.setHomeScore(homeScore);
-            match.setAwayScore(awayScore);
-        }, () -> {
-            throw new MatchNotFoundException("You try to update ended or not started match");
-        });
+
+        lock.lock();
+        try {
+            Optional<Match> matchOptional = getMatchByTeams(homeTeam, awayTeam);
+            if (matchOptional.isPresent()) {
+                Match match = matchOptional.get();
+                match.setHomeScore(homeScore);
+                match.setAwayScore(awayScore);
+            } else {
+                throw new MatchNotFoundException("Match not found or already ended");
+            }
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void finishMatch(String homeTeam, String awayTeam) {
         validateTeamNames(homeTeam, awayTeam);
-        getMatchByTeams(homeTeam, awayTeam).ifPresentOrElse(tempStoreForMatches::remove,
-                () -> { throw new MatchNotFoundException("Match not found"); });
+
+        lock.lock();
+        try {
+            Optional<Match> matchOptional = getMatchByTeams(homeTeam, awayTeam);
+            if (matchOptional.isPresent()) {
+                tempStoreForMatches.remove(matchOptional.get());
+            } else {
+                throw new MatchNotFoundException("Match not found");
+            }
+        } finally {
+            lock.unlock();
+        }
     }
 
     public List<Match> getSummary() {
-        return tempStoreForMatches.stream()
-                .sorted(Comparator.comparingInt(Match::getTotalScore)
-                        .thenComparing(Match::getStartTime).reversed())
-                .collect(Collectors.toList());
+        lock.lock();
+        try {
+            return tempStoreForMatches.stream()
+                    .sorted(Comparator.comparingInt(Match::getTotalScore)
+                            .thenComparing(Match::getStartTime).reversed())
+                    .collect(Collectors.toList());
+        } finally {
+            lock.unlock();
+        }
     }
 
     public boolean isMatchExist(String homeTeam, String awayTeam) {

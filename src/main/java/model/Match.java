@@ -36,11 +36,19 @@ public class Match {
         this.homeScore = homeScore;
     }
 
+    public int getHomeScore() {
+        return homeScore;
+    }
+
     public void setAwayScore(int awayScore) {
         if (awayScore < 0) {
             throw new IllegalArgumentException("Score cannot be negative");
         }
         this.awayScore = awayScore;
+    }
+
+    public int getAwayScore() {
+        return awayScore;
     }
 
     public LocalDateTime getStartTime() {
